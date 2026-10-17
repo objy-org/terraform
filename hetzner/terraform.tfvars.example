@@ -1,0 +1,21 @@
+deployment_name = "objydb-production"
+location        = "fsn1"
+server_type     = "ccx33"
+
+shards  = 2
+replicas = 2
+heap_mb = 8192
+
+release_url    = "https://releases.example.com/objydb/0.1.0/objydb-linux-x64.tar.gz"
+release_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
+
+s3_endpoint = "https://fsn1.your-objectstorage.com"
+s3_region   = "fsn1"
+
+# Supply s3_access_key and s3_secret_key through TF_VAR environment variables.
+# Set s3_bucket to reuse an existing bucket; otherwise one is generated.
+# s3_bucket = "customer-objydb-data"
+
+# Optional break-glass access.
+# ssh_public_key   = "ssh-ed25519 AAAA... admin@example"
+# ssh_allowed_cidrs = ["203.0.113.10/32"]

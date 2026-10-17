@@ -1,0 +1,81 @@
+#cloud-config
+package_update: true
+packages:
+  - ca-certificates
+  - curl
+
+users:
+  - name: objydb
+    system: true
+    shell: /usr/sbin/nologin
+    home: /var/lib/objydb
+    create_home: true
+
+write_files:
+  - path: /etc/objydb/objydb.json
+    owner: root:objydb
+    permissions: "0640"
+    encoding: b64
+    content: ${config_base64}
+
+  - path: /etc/objydb/objydb.env
+    owner: root:objydb
+    permissions: "0640"
+    encoding: b64
+    content: ${environment_base64}
+
+  - path: /usr/local/sbin/objydb-mount-wal
+    owner: root:root
+    permissions: "0755"
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      device="/dev/disk/by-id/scsi-0HC_Volume_${wal_volume_id}"
+      for attempt in $(seq 1 120); do
+        [ -b "$device" ] && break
+        sleep 1
+      done
+      [ -b "$device" ] || { echo "WAL volume did not appear: $device" >&2; exit 1; }
+      mkdir -p /var/lib/objydb/wal
+      grep -qF "$device /var/lib/objydb/wal " /etc/fstab || echo "$device /var/lib/objydb/wal ext4 defaults,nofail 0 2" >> /etc/fstab
+      mountpoint -q /var/lib/objydb/wal || mount /var/lib/objydb/wal
+      chown objydb:objydb /var/lib/objydb/wal
+
+  - path: /etc/systemd/system/objydb.service
+    owner: root:root
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=OBJY DB node ${node_id}
+      Wants=network-online.target
+      After=network-online.target
+
+      [Service]
+      Type=simple
+      User=objydb
+      Group=objydb
+      EnvironmentFile=/etc/objydb/objydb.env
+      WorkingDirectory=/opt/objydb/current
+      ExecStartPre=/usr/local/sbin/objydb-mount-wal
+      ExecStart=/opt/objydb/current/bin/node --max-old-space-size=${heap_mb} /opt/objydb/current/src/index.js --config /etc/objydb/objydb.json
+      Restart=always
+      RestartSec=3
+      TimeoutStopSec=120
+      LimitNOFILE=1048576
+      NoNewPrivileges=true
+      PrivateTmp=true
+      ProtectHome=true
+
+      [Install]
+      WantedBy=multi-user.target
+
+runcmd:
+  - [mkdir, -p, /opt/objydb/releases]
+  - [curl, -fsSL, "${release_url}", -o, /tmp/objydb-release.tar.gz]
+  - [bash, -lc, "echo '${release_sha256}  /tmp/objydb-release.tar.gz' | sha256sum -c -"]
+  - [mkdir, -p, /opt/objydb/releases/current]
+  - [tar, -xzf, /tmp/objydb-release.tar.gz, -C, /opt/objydb/releases/current]
+  - [ln, -sfn, /opt/objydb/releases/current, /opt/objydb/current]
+  - [chown, -R, "objydb:objydb", /opt/objydb]
+  - [systemctl, daemon-reload]
+  - [systemctl, enable, --now, objydb.service]
