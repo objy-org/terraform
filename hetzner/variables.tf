@@ -96,12 +96,41 @@ variable "ssh_allowed_cidrs" {
 }
 
 variable "release_url" {
-  description = "HTTPS URL of the immutable OBJY DB Linux release archive."
+  description = "HTTPS URL of the checksum-pinned OBJY DB release archive."
   type        = string
 
   validation {
     condition     = startswith(var.release_url, "https://")
     error_message = "release_url must use HTTPS."
+  }
+}
+
+variable "release_format" {
+  description = "bundle expects bin/node and src/index.js at the archive root; github-source installs dependencies from a GitHub source archive."
+  type        = string
+  default     = "bundle"
+
+  validation {
+    condition     = contains(["bundle", "github-source"], var.release_format)
+    error_message = "release_format must be bundle or github-source."
+  }
+}
+
+variable "node_runtime" {
+  description = "Checksum-pinned official Node.js tar.gz used for github-source releases. Must match the server architecture; the default is Linux x64."
+  type = object({
+    url    = string
+    sha256 = string
+  })
+  nullable = false
+  default = {
+    url    = "https://nodejs.org/dist/v22.23.3/node-v22.23.3-linux-x64.tar.gz"
+    sha256 = "1084aa36196bba4c3a5e69a1ee388a6e4ff729dad09445fbcd434b28fe3c24af"
+  }
+
+  validation {
+    condition     = startswith(var.node_runtime.url, "https://") && can(regex("^[a-f0-9]{64}$", var.node_runtime.sha256))
+    error_message = "node_runtime must have an HTTPS URL and a lowercase 64-character SHA-256 checksum."
   }
 }
 

@@ -8,17 +8,37 @@ users:
   - name: objydb
     system: true
     shell: /usr/sbin/nologin
-    home: /var/lib/objydb
-    create_home: true
+    homedir: /var/lib/objydb
+    no_create_home: false
 
 write_files:
+  # Terraform attaches the private NIC after the server starts. Keep DHCP
+  # configured for both names Hetzner uses for its first private interface,
+  # including when the hotplug event precedes cloud-init's hotplug setup.
+  - path: /etc/netplan/60-objydb-private.yaml
+    owner: root:root
+    permissions: "0600"
+    content: |
+      network:
+        version: 2
+        renderer: networkd
+        ethernets:
+          enp7s0:
+            dhcp4: true
+            optional: true
+          ens10:
+            dhcp4: true
+            optional: true
+
   - path: /etc/objydb/objydb.json
+    defer: true
     owner: root:objydb
     permissions: "0640"
     encoding: b64
     content: ${config_base64}
 
   - path: /etc/objydb/objydb.env
+    defer: true
     owner: root:objydb
     permissions: "0640"
     encoding: b64
@@ -56,7 +76,7 @@ write_files:
       Group=objydb
       EnvironmentFile=/etc/objydb/objydb.env
       WorkingDirectory=/opt/objydb/current
-      ExecStartPre=/usr/local/sbin/objydb-mount-wal
+      ExecStartPre=+/usr/local/sbin/objydb-mount-wal
       ExecStart=/opt/objydb/current/bin/node --max-old-space-size=${heap_mb} /opt/objydb/current/src/index.js --config /etc/objydb/objydb.json
       Restart=always
       RestartSec=3
@@ -69,13 +89,38 @@ write_files:
       [Install]
       WantedBy=multi-user.target
 
+  - path: /usr/local/sbin/objydb-install
+    owner: root:root
+    permissions: "0755"
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      release_url=$(printf '%s' '${base64encode(release_url)}' | base64 --decode)
+      curl -fsSL --retry 3 "$release_url" -o /tmp/objydb-release.tar.gz
+      printf '%s  %s\n' '${release_sha256}' /tmp/objydb-release.tar.gz | sha256sum -c -
+      mkdir -p /opt/objydb/releases/current
+%{ if release_format == "github-source" ~}
+      tar -xzf /tmp/objydb-release.tar.gz --strip-components=1 -C /opt/objydb/releases/current
+      runtime_url=$(printf '%s' '${base64encode(node_runtime.url)}' | base64 --decode)
+      curl -fsSL --retry 3 "$runtime_url" -o /tmp/objydb-node.tar.gz
+      printf '%s  %s\n' '${node_runtime.sha256}' /tmp/objydb-node.tar.gz | sha256sum -c -
+      mkdir -p /opt/objydb/runtime
+      tar -xzf /tmp/objydb-node.tar.gz --strip-components=1 -C /opt/objydb/runtime
+      export PATH="/opt/objydb/runtime/bin:$PATH"
+      cd /opt/objydb/releases/current
+      npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+      mkdir -p bin
+      ln -sfn /opt/objydb/runtime/bin/node bin/node
+%{ else ~}
+      tar -xzf /tmp/objydb-release.tar.gz -C /opt/objydb/releases/current
+%{ endif ~}
+      test -x /opt/objydb/releases/current/bin/node
+      test -f /opt/objydb/releases/current/src/index.js
+      ln -sfn /opt/objydb/releases/current /opt/objydb/current
+      chown -R objydb:objydb /opt/objydb
+      systemctl daemon-reload
+      systemctl enable --now objydb.service
+
 runcmd:
-  - [mkdir, -p, /opt/objydb/releases]
-  - [curl, -fsSL, "${release_url}", -o, /tmp/objydb-release.tar.gz]
-  - [bash, -lc, "echo '${release_sha256}  /tmp/objydb-release.tar.gz' | sha256sum -c -"]
-  - [mkdir, -p, /opt/objydb/releases/current]
-  - [tar, -xzf, /tmp/objydb-release.tar.gz, -C, /opt/objydb/releases/current]
-  - [ln, -sfn, /opt/objydb/releases/current, /opt/objydb/current]
-  - [chown, -R, "objydb:objydb", /opt/objydb]
-  - [systemctl, daemon-reload]
-  - [systemctl, enable, --now, objydb.service]
+  - [netplan, apply]
+  - [/usr/local/sbin/objydb-install]

@@ -1,0 +1,34 @@
+#cloud-config
+write_files:
+  - path: /etc/netplan/60-objydb-private.yaml
+    permissions: "0600"
+    content: |
+      network:
+        version: 2
+        renderer: networkd
+        ethernets:
+          enp7s0: {dhcp4: true, optional: true}
+          ens10: {dhcp4: true, optional: true}
+  - path: /usr/local/sbin/objydb-prepare
+    permissions: "0700"
+    encoding: b64
+    content: ${script_base64}
+  - path: /usr/local/sbin/objydb-wal
+    permissions: "0700"
+    content: |
+      #!/bin/bash
+      set -euo pipefail
+      device=/dev/disk/by-id/scsi-0HC_Volume_${volume_id}
+      for attempt in $(seq 1 180); do
+        [ -b "$device" ] && break
+        sleep 2
+      done
+      test -b "$device"
+      mkdir -p /var/lib/objydb/wal
+      grep -qF "$device /var/lib/objydb/wal " /etc/fstab || echo "$device /var/lib/objydb/wal ext4 defaults 0 2" >> /etc/fstab
+      mountpoint -q /var/lib/objydb/wal || mount /var/lib/objydb/wal
+      chown objydb:objydb /var/lib/objydb/wal
+runcmd:
+  - [netplan, apply]
+  - [bash, /usr/local/sbin/objydb-prepare]
+  - [bash, /usr/local/sbin/objydb-wal]

@@ -46,6 +46,8 @@ resource "hcloud_server" "nodes" {
     wal_volume_id      = hcloud_volume.wal[each.key].id
     release_url        = var.release_url
     release_sha256     = var.release_sha256
+    release_format     = var.release_format
+    node_runtime       = var.node_runtime
     config_base64      = base64encode(jsonencode(local.node_configs[each.key]))
     environment_base64 = base64encode(local.environment_file)
   })
