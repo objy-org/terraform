@@ -8,19 +8,21 @@ platform; more will follow.
 
 *[Terraform installation guide](https://developer.hashicorp.com/terraform/install)*
 
-## 1. Hetzner
+## Hetzner
 
 **Shards, replicas, storage. One public endpoint.**
 
 Each node gets a server and persistent WAL volume, connected through a private
 network, an HTTP load balancer and Object Storage.
 
+### 1. Get your API token
+
 > [!IMPORTANT]
 > **You'll need a Hetzner API token.** Open [Hetzner Console](https://console.hetzner.com/projects),
 > select your project, then go to **Security → API tokens → Generate API token**.
 > Choose **Read & Write** permissions and copy the token into `HCLOUD_TOKEN` below.
 
-### Deploy
+### 2. Choose your size
 
 Choose a preset. The release URL, checksums, machine sizes and storage settings
 are already filled in—you only supply credentials.
@@ -35,6 +37,8 @@ are already filled in—you only supply credentials.
 All four use the same pinned `objy` source release (`eb221e0`) and Node.js runtime
 in Falkenstein (`fsn1`). These are HTTP configurations intended for testing;
 Hetzner capacity and account quotas still apply.
+
+### 3. Deploy
 
 You need **Terraform 1.7+** and **Hetzner Object Storage credentials**, in addition
 to the cloud token above. Run from the repository root in Bash or Zsh:
