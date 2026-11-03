@@ -107,19 +107,6 @@ Any input in [hetzner/variables.tf](hetzner/variables.tf) accepts `TF_VAR_<name>
 including `s3_endpoint`, `s3_region` and `s3_bucket`. Names are case-sensitive.
 Prefer files? Start with [terraform.tfvars.example](hetzner/terraform.tfvars.example).
 
-### Before you apply
-
-- **Files win.** `terraform.tfvars`, `*.auto.tfvars` (including JSON variants)
-  and CLI `-var` / `-var-file` values override the environment. For environment
-  customization, remove duplicate file assignments and omit the preset flag.
-- **Plans are snapshots.** Generate a new plan after changing settings.
-  Terraform does not automatically load `.env` files.
-- **Initial setup only.** This module creates a fixed topology; it does not
-  coordinate resizing existing clusters.
-- **Keep state private.** State and saved plans contain secrets. Use a protected
-  remote backend before production. Bucket and shard-map destruction protection
-  prevents `terraform destroy` from removing the entire deployment.
-
 ### More options
 
 <details>
