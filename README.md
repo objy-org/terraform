@@ -29,6 +29,34 @@ see the Hetzner README and `hetzner/objy-release.hcl` for the `objy` trial relea
 This first version installs a fixed topology. Do not change `shards` on an
 existing deployment; safe reshard orchestration will be added separately.
 
+## Configure Terraform with environment variables
+
+When running the standalone `hetzner` module directly, set `TF_VAR_<name>` to
+supply any input declared in [`hetzner/variables.tf`](hetzner/variables.tf):
+
+```sh
+export TF_VAR_shards=2
+export TF_VAR_replicas=3
+export TF_VAR_heap_mb=4096
+export TF_VAR_location=fsn1
+export TF_VAR_wal_volume_size_gb=20
+```
+
+These settings describe six database nodes (two shards with three copies each),
+a 4,096 MB maximum database heap per node, and a 20 GB WAL volume per node.
+`TF_VAR_server_type` selects the Hetzner machine size separately; changing the
+heap limit does not automatically choose a larger server.
+
+**Variable files override environment variables.** If you copied
+`terraform.tfvars.example` in the quick start, remove or comment out the settings
+you want to supply through the environment. Command-line `-var` and `-var-file`
+arguments also take precedence. See the [complete environment-variable guide](hetzner/README.md#configure-with-environment-variables)
+for credentials, release inputs, supported settings, and plan/apply examples.
+
+This applies to direct Terraform use. ObjyDB Control Center generates its own
+variable file from the wizard and filters inherited `TF_VAR_*` variables; those
+variables do not currently configure its UI or interactive CLI.
+
 ## Installer lifecycle and resizing
 
 All lifecycle management stays in the separate installer and Terraform. Do not
