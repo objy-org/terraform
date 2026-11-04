@@ -1,6 +1,6 @@
-# ObjyDB Terraform
+# OBJY DB Terraform
 
-Terraform deployment configurations for ObjyDB across cloud platforms.
+Terraform deployment configurations for OBJY DB across cloud platforms.
 
 Each platform has its own Terraform files and a chapter here: **Deploy** with a
 ready-to-use preset, or **Customize** the settings. Hetzner is the first supported
@@ -34,9 +34,10 @@ are already filled in—you only supply credentials.
 | [Medium](hetzner/objy-medium.hcl) | 6 | 2 × 3 | CX33 | 4 GiB | 20 GB |
 | [Large](hetzner/objy-large.hcl) | 12 | 4 × 3 | CX43 | 8 GiB | 40 GB |
 
-All four use the same pinned `objy` source release (`eb221e0`) and Node.js runtime
-in Falkenstein (`fsn1`). These are HTTP configurations intended for testing;
-Hetzner capacity and account quotas still apply.
+All four use the checksum-pinned [OBJY DB `v0.1.0` release](https://github.com/objy-org/objy/releases/tag/v0.1.0)
+and the same Node.js runtime in Falkenstein (`fsn1`). These are HTTP
+configurations intended for testing; Hetzner capacity and account quotas still
+apply.
 
 ### 3. Deploy
 
@@ -62,6 +63,32 @@ For another size, replace `objy-tiny.hcl` with `objy-small.hcl`,
 `objy-medium.hcl` or `objy-large.hcl`. Use one workspace per cluster; return to
 this cluster with `terraform workspace select my-cluster`. Choose the size before
 creating it—switching presets is not a resizing workflow.
+
+### Remove a cluster
+
+OBJY DB protects its Object Storage bucket and shard map from accidental
+Terraform deletion. Back up the workspace state, detach those protected storage
+resources, then destroy the remaining infrastructure:
+
+```sh
+cd hetzner
+terraform workspace select my-cluster
+terraform state pull > my-cluster.tfstate.backup
+terraform state rm minio_s3_object.shard_map
+# Run this only when it appears in `terraform state list`:
+terraform state rm 'minio_s3_bucket.data[0]'
+terraform plan -destroy -var-file=objy-tiny.hcl -out=objydb-destroy.tfplan
+# Review the destructive plan before applying it.
+terraform apply objydb-destroy.tfplan
+terraform workspace select default
+terraform workspace delete my-cluster
+```
+
+Use the same preset or custom variables used to create the cluster. This removes
+Terraform-managed compute, networking and WAL volumes while leaving Object
+Storage data in place. Delete the bucket separately only after verifying that
+its snapshots and journals are no longer needed. Protect the state backup: it
+contains sensitive deployment values.
 
 ### Customize
 

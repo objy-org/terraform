@@ -1,4 +1,4 @@
-# ObjyDB tag objy, commit eb221e0826dce0359c16558389abafd155006505.
+# OBJY DB release v0.1.0.
 # Small: 3 nodes, 1 shard(s), 3 copies, 2 GiB heap, 10 GB WAL per node.
 # From hetzner/: terraform plan -var-file=objy-small.hcl -out=objydb.tfplan
 # Supply HCLOUD_TOKEN, TF_VAR_s3_access_key and TF_VAR_s3_secret_key.
@@ -17,10 +17,10 @@ heap_mb            = 2048
 wal_volume_size_gb = 10
 network_cidr       = "10.42.0.0/24"
 
-# The GitHub release has source archives only. Pin its commit and exact bytes.
+# Bootstrap from the tagged source archive and verify its exact bytes.
 release_format = "github-source"
-release_url    = "https://codeload.github.com/spoo-technologies/objy-db/tar.gz/eb221e0826dce0359c16558389abafd155006505"
-release_sha256 = "ff445175a99d29c139e6605e2afe14955e0e33e90f91a37e782b9cea7f2e8c0b"
+release_url    = "https://codeload.github.com/objy-org/objy/tar.gz/refs/tags/v0.1.0"
+release_sha256 = "4c1b7cc82eae150fcb31b923ffcf1084aaf70ad46d17fef7d91a7ffe8efb430e"
 
 node_runtime = {
   url    = "https://nodejs.org/dist/v22.23.3/node-v22.23.3-linux-x64.tar.gz"

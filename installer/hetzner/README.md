@@ -1,6 +1,6 @@
-# ObjyDB Control Center infrastructure contract v2
+# OBJY DB Control Center infrastructure contract v2
 
-This module handles cluster creation and installer-coordinated lifecycle operations for ObjyDB Control Center. It is separate
+This module handles cluster creation and installer-coordinated lifecycle operations for OBJY DB Control Center. It is separate
 from the standalone `../../hetzner` module and does not change its existing state.
 
 Terraform owns machines, persistent WAL volumes, networking, placement and the
